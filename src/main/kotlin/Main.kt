@@ -4,10 +4,9 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import com.airtable.v0.*
-import com.airtable.v0.models.Record
-import com.airtable.v0.services.Airtable
 import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
 
 //@Serializable
 //data class Update(
@@ -17,41 +16,25 @@ import kotlinx.serialization.json.Json
 //    val message: Message? = null,
 //    @SerialName("callback_query")
 //    val callbackQuery: CallbackQuery? = null,
-)
-
-//@Serializable
-//data class Response(
-//    @SerialName("result")
-//    val result: List<Update>,
 //)
 
 fun main(args: Array<String>) {
     val airtableBotToken = args[0]
-    var lastUpdateId = 0L
-    val json = Json { ignoreUnknownKeys = true }
-    val airtable = Airtable(airtableBotToken, "app9he8qhzLjlZo56")
-    val table = airtable.table("fldvu0eaKuAwQ6LWO")
+    val airBaseID = "9he8qhzLjlZo56"
+    val table = "tblsgqhvtm2xFxBdN"
 
-    val result = runCatching { getUpdates(airtableBotToken, lastUpdateId) }
-    val responseString = result.getOrNull()
-    println(responseString)
-
-    println(table)
-}
-
-class Airtable(airBotToken: String, tableId: String) {
-    fun table(tableName: String): String {
-    return tableName
+    val url = URL("https://api.airtable.com/v0/app$airBaseID/$table")
+    val connection = url.openConnection() as HttpURLConnection
+    connection.requestMethod = "GET"
+    connection.setRequestProperty("Authorization", "Bearer $airtableBotToken")
+    val responseCode = connection.responseCode
+    val inputStream = if (responseCode == HttpURLConnection.HTTP_OK) {
+        connection.inputStream
+    } else {
+        connection.errorStream
     }
 
-}
+    val response = inputStream.bufferedReader().use { it.readText() }
 
-fun getUpdatesAirTable(botToken: String, updateId: Long): String {
-//    val urlGetUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset=$updateId"
-    val urlGetUpdates = "https://api.airtable.com/v0/app9he8qhzLjlZo56/Place \\" +
-            "-H Authorization: Bearer $botToken"
-    val client: HttpClient = HttpClient.newBuilder().build()
-    val request: HttpRequest = HttpRequest.newBuilder().uri(URI.create(urlGetUpdates)).build()
-    val response: HttpResponse<String> = client.send(request, HttpResponse.BodyHandlers.ofString())
-    return response.body()
+    println(response)
 }
