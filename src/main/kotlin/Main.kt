@@ -35,11 +35,11 @@ fun main(args: Array<String>) {
     println(responseAirtableString)
     val responseRecId = json.decodeFromString<Response>(responseAirtableString)
     val recordsIdList = responseRecId.records.map { it.id }
-    println(recordsIdList)
+    println("ID records: $recordsIdList")
 
     val response: Response = json.decodeFromString(responseAirtableString)
     val fieldsNameOfColumn = response.records[0].fields.keys.toList()
-    println(fieldsNameOfColumn)
+    println("Имена столбцов: $fieldsNameOfColumn")
 
 //    val fieldsPost = mapOf(
 //        fieldsNameOfColumn.last() to "Post 1",
@@ -59,6 +59,7 @@ fun main(args: Array<String>) {
 //    println(postAirtable(airtableBotToken, airBaseID, tableID, fieldsPost))
 //    println(putAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[6], fieldsPut))
 //    println(patchAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[7], fieldsPatch))
+//    println(deleteAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[3]))
 }
 
 fun getAirtable(
@@ -142,6 +143,24 @@ fun patchAirtable(
         response.body?.string() ?: ""
     } catch (e: IOException) {
         println("Error updating record in Airtable: ${e.message}")
+        ""
+    }
+}
+
+fun deleteAirtable(
+    airtableBotToken: String, airBaseID: String, tableId: String, recordId: String,
+): String {
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url("https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId")
+        .delete()
+        .addHeader("Authorization", "Bearer $airtableBotToken")
+        .build()
+    return try {
+        val response = client.newCall(request).execute()
+        response.body?.string() ?: ""
+    } catch (e: IOException) {
+        println("Error deleting record from Airtable: ${e.message}")
         ""
     }
 }
