@@ -41,21 +41,21 @@ fun main(args: Array<String>) {
     val fieldsNameOfColumn = response.records[0].fields.keys.toList()
     println(fieldsNameOfColumn)
 
-    val fieldsPost = mapOf(
-        fieldsNameOfColumn.last() to "Post 1",
-        fieldsNameOfColumn[0] to "SPb",
-        fieldsNameOfColumn[1] to "This is a post record from IDEA"
-    )
-    val fieldsPatch = mapOf(
-        fieldsNameOfColumn.last() to "Patch 2",
+//    val fieldsPost = mapOf(
+//        fieldsNameOfColumn.last() to "Post 1",
 //        fieldsNameOfColumn[0] to "SPb",
-        fieldsNameOfColumn[1] to "This is a patch record from IDEA"
-    )
-    val fieldsPut = mapOf(
-        fieldsNameOfColumn.last() to "Put 2",
-        fieldsNameOfColumn[0] to "SPb",
-        fieldsNameOfColumn[1] to "This is a put record from IDEA"
-    )
+//        fieldsNameOfColumn[1] to "This is a post record from IDEA"
+//    )
+//    val fieldsPatch = mapOf(
+//        fieldsNameOfColumn.last() to "Patch 2",
+////        fieldsNameOfColumn[0] to "SPb",
+//        fieldsNameOfColumn[1] to "This is a patch record from IDEA"
+//    )
+//    val fieldsPut = mapOf(
+//        fieldsNameOfColumn.last() to "Put 2",
+//        fieldsNameOfColumn[0] to "SPb",
+//        fieldsNameOfColumn[1] to "This is a put record from IDEA"
+//    )
 //    println(postAirtable(airtableBotToken, airBaseID, tableID, fieldsPost))
 //    println(putAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[6], fieldsPut))
 //    println(patchAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[7], fieldsPatch))
