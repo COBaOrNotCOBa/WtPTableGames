@@ -18,7 +18,12 @@ fun main(args: Array<String>) {
     while (true) {
         Thread.sleep(2000)
 
-        botCommand(json, botTokenTg, "start", "main menu")
+        botCommand(
+            json, botTokenTg, listOf(
+                BotCommand("hello", "hello"),
+                BotCommand("start", "Глвное меню"),
+            )
+        )
 
         val resultTg = runCatching { getUpdates(botTokenTg, lastUpdateId) }
         val responseStringTg = resultTg.getOrNull() ?: continue
@@ -43,7 +48,7 @@ fun handleUpdate(
     val chatId = updateTg.message?.chat?.id ?: updateTg.callbackQuery?.message?.chat?.id ?: return
     val data = updateTg.callbackQuery?.data
 
-    val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
+
 
     if (message?.lowercase() == MAIN_MENU || data == MAIN_MENU) {
         sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
@@ -51,12 +56,14 @@ fun handleUpdate(
     }
 
     if (data == LIST_OF_PLACE) {
+        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
         val recordsIdList = responseAt.records.map { it.fields.values }
         sendMessage(json, botTokenTg, chatId, "Значения: $recordsIdList")
         println("Список мест: $recordsIdList")
     }
 
     if (data == LIST_OF_NAME_PLACE) {
+        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
         val recordsIdList = responseAt.records.map { it.fields.keys }
         sendMessage(json, botTokenTg, chatId, "Ключи: $recordsIdList")
         println("Названия мест: $recordsIdList")

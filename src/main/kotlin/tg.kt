@@ -142,55 +142,52 @@ fun sendMenu(json: Json, botToken: String, chatId: Long): String {
     return response.body?.string() ?: ""
 }
 
-fun botCommand(json: Json, botTokenTg: String, command: String, description: String){
-    val startCommand = BotCommand(command, description)
-    val commands = listOf(startCommand)
+fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>){
+//    val startCommand = BotCommand(command, description)
+//    val commands = listOf(startCommand, startCommand)
 
-    val setMyCommandsRequest = SetMyCommandsRequest(commands)
+    val setMyCommandsRequest = SetMyCommandsRequest(command)
     val requestBody = json.encodeToString(setMyCommandsRequest)
-
     val client = OkHttpClient()
-
     val request = Request.Builder()
         .url("https://api.telegram.org/bot$botTokenTg/setMyCommands")
         .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
         .build()
-
     val response = client.newCall(request).execute()
     val responseBody = response.body?.string()
 
+    println(responseBody)
     responseBody?.let {
-        "/start"
+        ""
     }
-
     response.close()
 }
 
-fun botCommandMenu(json: Json, botTokenTg: String, command: String, description: String) {
-    val startCommand = BotCommand(command, description)
-    val commands = listOf(startCommand)
-
-    val commandScope = InputBotCommandScope(BotCommandScopeDefault(), null)
-    val setMyCommandsRequest = SetMyCommandsRequest(commands, commandScope)
-
-    val requestBody = json.encodeToString(setMyCommandsRequest)
-
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url("https://api.telegram/bot$botTokenTg/setMyCommands")
-        .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
-        .build()
-
-    val response = client.newCall(request).execute()
-    val responseBody = response.body?.string()
-
-    responseBody?.let {
-        println("/start command added to the default command panel")
-    }
-
-    response.close()
-}
+//fun botCommandMenu(json: Json, botTokenTg: String, command: String, description: String) {
+//    val startCommand = BotCommand(command, description)
+//    val commands = listOf(startCommand)
+//
+//    val commandScope = InputBotCommandScope(BotCommandScopeDefault(), null)
+//    val setMyCommandsRequest = SetMyCommandsRequest(commands, commandScope)
+//
+//    val requestBody = json.encodeToString(setMyCommandsRequest)
+//
+//    val client = OkHttpClient()
+//
+//    val request = Request.Builder()
+//        .url("https://api.telegram/bot$botTokenTg/setMyCommands")
+//        .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
+//        .build()
+//
+//    val response = client.newCall(request).execute()
+//    val responseBody = response.body?.string()
+//
+//    responseBody?.let {
+//        println("/start command added to the default command panel")
+//    }
+//
+//    response.close()
+//}
 
 const val MAIN_MENU = "/start"
 
