@@ -1,51 +1,66 @@
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 
-@Serializable
-data class Response(
-    @SerialName("records")
-    val records: List<Records>,
-)
-
-@Serializable
-data class Records(
-    @SerialName("id")
-    val id: String,
-    @SerialName("createdTime")
-    val createdTime: String,
-    @SerialName("fields")
-    val fields: Map<String, String>,
-)
 
 fun main(args: Array<String>) {
-    val airtableBotToken = args[0]
+    val botTokenAt = args[0]
+    val botTokenTg = args[1]
+    var lastUpdateId = 0L
     val json = Json { ignoreUnknownKeys = true }
     val airBaseID = "9he8qhzLjlZo56"
     val tableID = "tblsgqhvtm2xFxBdN"
 
-    val resultAirtable = runCatching { getAirtable(airtableBotToken, airBaseID, tableID) }
-    val responseAirtableString = resultAirtable.getOrNull() ?: "null"
-    println(responseAirtableString)
-    val responseRecId = json.decodeFromString<Response>(responseAirtableString)
+    while (true) {
+        Thread.sleep(2000)
+        val resultTg = runCatching { getUpdates(botTokenTg, lastUpdateId) }
+        val responseStringTg = resultTg.getOrNull() ?: continue
+        println(responseStringTg)
+
+        val responseTg: ResponseTg = json.decodeFromString(responseStringTg)
+        if (responseTg.result.isEmpty()) continue
+        val sortedUpdates = responseTg.result.sortedBy { it.updateId }
+        sortedUpdates.forEach { handleUpdate(it, json, botTokenTg, botTokenAt, airBaseID, tableID) }
+        lastUpdateId = sortedUpdates.last().updateId + 1
+    }
+
+}
+
+fun handleUpdate(
+    update: Update,
+    json: Json,
+    botTokenTg: String,
+    botTokenAt: String,
+    airBaseID: String,
+    tableID: String,
+) {
+    val message = update.message?.text
+    val chatId = update.message?.chat?.id ?: update.callbackQuery?.message?.chat?.id ?: return
+    val data = update.callbackQuery?.data
+
+    if (message?.lowercase() == MAIN_MENU || data == MAIN_MENU) {
+        getUpdateAt(json, botTokenAt, airBaseID, tableID)
+        sendMessage(json, botTokenTg, chatId, "Done!")
+    }
+
+}
+
+fun getUpdateAt(json: Json, botTokenAt: String, airBaseID: String, tableID: String) {
+    val resultAt = runCatching { getAirtable(botTokenAt, airBaseID, tableID) }
+    val responseAt = resultAt.getOrNull() ?: "null"
+    println(responseAt)
+    val responseRecId = json.decodeFromString<ResponseAt>(responseAt)
     val recordsIdList = responseRecId.records.map { it.id }
     println("ID records: $recordsIdList")
 
-    val response: Response = json.decodeFromString(responseAirtableString)
+    val response: ResponseAt = json.decodeFromString(responseAt)
     val fieldsNameOfColumn = response.records[0].fields.keys.toList()
     println("Имена столбцов: $fieldsNameOfColumn")
 
-//    val fieldsPost = mapOf(
-//        fieldsNameOfColumn.last() to "Post 1",
-//        fieldsNameOfColumn[0] to "SPb",
-//        fieldsNameOfColumn[1] to "This is a post record from IDEA"
-//    )
+    val fieldsPost = mapOf(
+        fieldsNameOfColumn.last() to "Post 2",
+        fieldsNameOfColumn[0] to "SPb",
+        fieldsNameOfColumn[1] to "This is a post record from IDEA"
+    )
 //    val fieldsPatch = mapOf(
 //        fieldsNameOfColumn.last() to "Patch 2",
 ////        fieldsNameOfColumn[0] to "SPb",
@@ -56,117 +71,10 @@ fun main(args: Array<String>) {
 //        fieldsNameOfColumn[0] to "SPb",
 //        fieldsNameOfColumn[1] to "This is a put record from IDEA"
 //    )
-//    println(postAirtable(airtableBotToken, airBaseID, tableID, fieldsPost))
-//    println(putAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[6], fieldsPut))
-//    println(patchAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[7], fieldsPatch))
-//    println(deleteAirtable(airtableBotToken, airBaseID, tableID, recordsIdList[3]))
+//    println(postAirtable(botTokenTg, airBaseID, tableID, fieldsPost))
+//    println(putAirtable(botTokenTg, airBaseID, tableID, recordsIdList[6], fieldsPut))
+//    println(patchAirtable(botTokenTg, airBaseID, tableID, recordsIdList[7], fieldsPatch))
+//    println(deleteAirtable(botTokenTg, airBaseID, tableID, recordsIdList[3]))
 }
 
-fun getAirtable(
-    airtableBotToken: String, airBaseID: String, table: String,
-): String {
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$table")
-        .get()
-        .addHeader("Authorization", "Bearer $airtableBotToken")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error getting records from Airtable: ${e.message}")
-        ""
-    }
-}
-
-fun postAirtable(
-    airtableBotToken: String, airBaseID: String, tableId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val fieldsJson = fields.entries.joinToString(separator = ",") {
-        "\"${it.key}\":\"${it.value}\""
-    }
-    val postData = "{\"fields\": {$fieldsJson}}"
-    val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId")
-        .post(requestBody)
-        .addHeader("Authorization", "Bearer $airtableBotToken")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error creating new record in Airtable: ${e.message}")
-        ""
-    }
-}
-
-fun putAirtable(
-    airtableBotToken: String, airBaseID: String, tableId: String, recordId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val fieldsJson = fields.entries.joinToString(separator = ",") {
-        "\"${it.key}\":\"${it.value}\""
-    }
-    val postData = "{\"fields\": {$fieldsJson}}"
-    val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId")
-        .put(requestBody)
-        .addHeader("Authorization", "Bearer $airtableBotToken")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error updating record in Airtable: ${e.message}")
-        ""
-    }
-}
-
-fun patchAirtable(
-    airtableBotToken: String, airBaseID: String, tableId: String, recordId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val url = "https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId"
-    val json = "application/json; charset=utf-8".toMediaTypeOrNull()
-    val requestBody = "{\"fields\":${fields.toAirtableFieldsJson()}}".toRequestBody(json)
-    val request = Request.Builder()
-        .url(url)
-        .patch(requestBody)
-        .addHeader("Authorization", "Bearer $airtableBotToken")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error updating record in Airtable: ${e.message}")
-        ""
-    }
-}
-
-fun deleteAirtable(
-    airtableBotToken: String, airBaseID: String, tableId: String, recordId: String,
-): String {
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId")
-        .delete()
-        .addHeader("Authorization", "Bearer $airtableBotToken")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error deleting record from Airtable: ${e.message}")
-        ""
-    }
-}
-
-fun Map<String, String>.toAirtableFieldsJson(): String {
-    return entries.joinToString(separator = ",") { (key, value) ->
-        "\"$key\":\"$value\""
-    }.let { "{$it}" }
-}
+const val MAIN_MENU = "/start"
