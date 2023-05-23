@@ -1,29 +1,24 @@
+import jdk.javadoc.internal.tool.Main.execute
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 fun main(args: Array<String>) {
     val botTokenAt = args[0]
     val botTokenTg = args[1]
     var lastUpdateId = 0L
     val json = Json { ignoreUnknownKeys = true }
-//    val airBaseID = "9he8qhzLjlZo56"
     val airBaseID = args[2]
     val tableID = "tblsgqhvtm2xFxBdN"
 
+    botCommand(
+        json, botTokenTg, listOf(
+            BotCommand("hello", "hello"),
+            BotCommand("start", "Глвное меню"),
+        )
+    )
+
     while (true) {
         Thread.sleep(2000)
-
-        botCommand(
-            json, botTokenTg, listOf(
-                BotCommand("hello", "hello"),
-                BotCommand("start", "Глвное меню"),
-            )
-        )
 
         val resultTg = runCatching { getUpdates(botTokenTg, lastUpdateId) }
         val responseStringTg = resultTg.getOrNull() ?: continue
@@ -48,30 +43,36 @@ fun handleUpdate(
     val chatId = updateTg.message?.chat?.id ?: updateTg.callbackQuery?.message?.chat?.id ?: return
     val data = updateTg.callbackQuery?.data
 
-
-
     if (message?.lowercase() == MAIN_MENU || data == MAIN_MENU) {
         sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
         sendMenu(json, botTokenTg, chatId)
     }
 
+    if (message?.lowercase()?.contains("hello") == true) {
+        sendMessage(json, botTokenTg, chatId, "Hello")
+    }
+
     if (data == LIST_OF_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
-        val recordsIdList = responseAt.records.map { it.fields.values }
-        sendMessage(json, botTokenTg, chatId, "Значения: $recordsIdList")
-        println("Список мест: $recordsIdList")
+        val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Name
+        sendMessage(json, botTokenTg, chatId, "Значения: $location")
+    }
+
+    if (data == BUTTON) {
+        val forceReply = ForceReply(true)
+        val message = sendMessageButton(json,botTokenTg,chatId, "Введите значения:", replyMarkup = forceReply)
+        execute(message)
     }
 
     if (data == LIST_OF_NAME_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
-        val recordsIdList = responseAt.records.map { it.fields.keys }
-        sendMessage(json, botTokenTg, chatId, "Ключи: $recordsIdList")
-        println("Названия мест: $recordsIdList")
+        val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
+        sendMessage(json, botTokenTg, chatId, "Значения: $names")
     }
 
     if (data == POST_PLACE) {
         val fieldsPost = mapOf(
-            "Name" to "Post 5",
+            "Name" to "Post 6",
             "Location" to "SPb",
             "Comments" to "This is a post record from IDEA"
         )

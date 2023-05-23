@@ -22,7 +22,14 @@ data class Records(
     val createdTime: String,
     @SerialName("fields")
     val fields: Map<String, String>,
-)
+) {
+    val namesOfPlace: List<String> by lazy {
+        fields["Name"]?.split(",") ?: emptyList()
+    }
+    val locationsOfPlace: List<String> by lazy {
+        fields["Location"]?.split(",") ?: emptyList()
+    }
+}
 
 fun getUpdateAt(json: Json, botTokenAt: String, airBaseID: String, tableID: String): ResponseAt {
     val resultAt = runCatching { getAirtable(botTokenAt, airBaseID, tableID) }

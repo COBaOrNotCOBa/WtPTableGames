@@ -13,6 +13,7 @@ data class ResponseTg(
     @SerialName("result")
     val result: List<Update>,
 )
+
 @Serializable
 data class Update(
     @SerialName("update_id")
@@ -59,6 +60,8 @@ data class SendMessageRequest(
 data class ReplyMarkup(
     @SerialName("inline_keyboard")
     val inlineKeyboard: List<List<InlineKeyboard>>,
+    @SerialName("forceReply")
+    val forceReply: ForceReply? = null,
 )
 
 @Serializable
@@ -67,6 +70,14 @@ data class InlineKeyboard(
     val callbackData: String,
     @SerialName("text")
     val text: String,
+)
+
+@Serializable
+data class ForceReply(
+    @SerialName("force_reply")
+    val inlineKeyboard: Boolean,
+//    @SerialName("input_field_placeholder")
+//    val inputFieldPlaceholder: String,
 )
 
 @Serializable
@@ -111,6 +122,25 @@ fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): St
     return response.body?.string() ?: ""
 }
 
+fun sendMessageButton(json: Json, botToken: String, chatId: Long, message: String, replyMarkup: ReplyMarkup): String {
+    val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
+    val requestBody = SendMessageRequest(
+        chatId = chatId,
+        text = message,
+        replyMarkup = replyMarkup
+    )
+    val requestBodyString = json.encodeToString(requestBody)
+    val client = OkHttpClient()
+    val requestBodyJson = requestBodyString.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(sendMessage)
+        .header("Content-type", "application/json")
+        .post(requestBodyJson)
+        .build()
+    val response = client.newCall(request).execute()
+    return response.body?.string() ?: ""
+}
+
 fun sendMenu(json: Json, botToken: String, chatId: Long): String {
     val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
     val requestBody = SendMessageRequest(
@@ -126,7 +156,10 @@ fun sendMenu(json: Json, botToken: String, chatId: Long): String {
                 ),
                 listOf(
                     InlineKeyboard(callbackData = POST_PLACE, text = "Добавить место для игр"),
-                )
+                ),
+                listOf(
+                    InlineKeyboard(callbackData = BUTTON, text = "Что за кнопка"),
+                ),
             )
         )
     )
@@ -142,10 +175,7 @@ fun sendMenu(json: Json, botToken: String, chatId: Long): String {
     return response.body?.string() ?: ""
 }
 
-fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>){
-//    val startCommand = BotCommand(command, description)
-//    val commands = listOf(startCommand, startCommand)
-
+fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
     val setMyCommandsRequest = SetMyCommandsRequest(command)
     val requestBody = json.encodeToString(setMyCommandsRequest)
     val client = OkHttpClient()
@@ -155,7 +185,6 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>){
         .build()
     val response = client.newCall(request).execute()
     val responseBody = response.body?.string()
-
     println(responseBody)
     responseBody?.let {
         ""
@@ -163,33 +192,8 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>){
     response.close()
 }
 
-//fun botCommandMenu(json: Json, botTokenTg: String, command: String, description: String) {
-//    val startCommand = BotCommand(command, description)
-//    val commands = listOf(startCommand)
-//
-//    val commandScope = InputBotCommandScope(BotCommandScopeDefault(), null)
-//    val setMyCommandsRequest = SetMyCommandsRequest(commands, commandScope)
-//
-//    val requestBody = json.encodeToString(setMyCommandsRequest)
-//
-//    val client = OkHttpClient()
-//
-//    val request = Request.Builder()
-//        .url("https://api.telegram/bot$botTokenTg/setMyCommands")
-//        .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
-//        .build()
-//
-//    val response = client.newCall(request).execute()
-//    val responseBody = response.body?.string()
-//
-//    responseBody?.let {
-//        println("/start command added to the default command panel")
-//    }
-//
-//    response.close()
-//}
-
 const val MAIN_MENU = "/start"
+const val BUTTON = "button"
 
 const val LIST_OF_PLACE = "list_of_place"
 const val LIST_OF_NAME_PLACE = "list_of_name_place"
