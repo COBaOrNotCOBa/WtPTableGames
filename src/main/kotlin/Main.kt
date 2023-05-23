@@ -1,14 +1,13 @@
-import jdk.javadoc.internal.tool.Main.execute
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 fun main(args: Array<String>) {
     val botTokenAt = args[0]
     val botTokenTg = args[1]
-    var lastUpdateId = 0L
-    val json = Json { ignoreUnknownKeys = true }
     val airBaseID = args[2]
     val tableID = "tblsgqhvtm2xFxBdN"
+    var lastUpdateId = 0L
+    val json = Json { ignoreUnknownKeys = true }
 
     botCommand(
         json, botTokenTg, listOf(
@@ -58,12 +57,6 @@ fun handleUpdate(
         sendMessage(json, botTokenTg, chatId, "Значения: $location")
     }
 
-    if (data == BUTTON) {
-        val forceReply = ForceReply(true)
-        val message = sendMessageButton(json,botTokenTg,chatId, "Введите значения:", replyMarkup = forceReply)
-        execute(message)
-    }
-
     if (data == LIST_OF_NAME_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
         val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
@@ -71,14 +64,33 @@ fun handleUpdate(
     }
 
     if (data == POST_PLACE) {
-        val fieldsPost = mapOf(
-            "Name" to "Post 6",
-            "Location" to "SPb",
-            "Comments" to "This is a post record from IDEA"
-        )
-        sendMessage(json, botTokenTg, chatId, fieldsPost.toString())
-        println(postAirtable(botTokenAt, airBaseID, tableID, fieldsPost))
+        // Запрашиваем у пользователя название места
+        sendMessage(json, botTokenTg, chatId, "Введите название места")
+        // Ждем ответа пользователя иаем его значение в переменную name
+        val name = waitForUserInput(json, botTokenTg, chatId, )
+        // Запрашиваем у пользователя местоположение
+        sendMessage(json, botTokenTg, chatId, "Введите местоположение")
+        // Ждем ответа пользователя и передаем его значение в переменную location
+        val location = waitForUserInput(json, botTokenTg, chatId)
+        // Запрашиваем у пользователя комментарий
+        sendMessage(json, botTokenTg, chatId, "Введите комментарий")
+        // Ждем ответа пользователя и передаем его значение в переменную comments
+        val comments = waitForUserInput(json, botTokenTg, chatId)
+        // Отправляем данные в Airtable
+        val fieldsPost = mapOf("Name" to name, "Location" to location, "Comments" to comments)
+        val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
+        sendMessage(json, botTokenTg, chatId, response)
     }
+
+//    if (data == POST_PLACE) {
+//        val fieldsPost = mapOf(
+//            "Name" to "Post 6",
+//            "Location" to "SPb",
+//            "Comments" to "This is a post record from IDEA"
+//        )
+//        sendMessage(json, botTokenTg, chatId, fieldsPost.toString())
+//        println(postAirtable(botTokenAt, airBaseID, tableID, fieldsPost))
+//    }
 
 //    val recordsIdList = responseAt.records.map { it.id }
 //    println("ID records: $recordsIdList")

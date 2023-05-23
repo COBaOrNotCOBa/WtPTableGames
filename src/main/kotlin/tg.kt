@@ -1,5 +1,6 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -7,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.net.URL
 
 @Serializable
 data class ResponseTg(
@@ -127,7 +129,7 @@ fun sendMessageButton(json: Json, botToken: String, chatId: Long, message: Strin
     val requestBody = SendMessageRequest(
         chatId = chatId,
         text = message,
-        replyMarkup = replyMarkup
+        replyMarkup = replyMarkup,
     )
     val requestBodyString = json.encodeToString(requestBody)
     val client = OkHttpClient()
@@ -192,10 +194,38 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
     response.close()
 }
 
+fun waitForUserInput(json: Json, botToken: String, chatId: Long): String {
+    var messageText: String? = null
+    while (messageText == null) {
+        val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset"
+        val response = URL(getUpdates).readText()
+        val responseJson = json.decodeFromString<ResponseTg>(response)
+        responseJson.result.forEach { update ->
+            if (update.message?.chat?.id == chatId) {
+                messageText = update.message.text
+            }
+        }
+        Thread.sleep(2000)
+    }
+    return messageText as String
+}
+
+//fun getUpdatesUserAnswer(json: Json, botToken: String): Update? {
+//    val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset"
+//    val client = OkHttpClient()
+//    val request = Request.Builder()
+//        .url(getUpdates)
+//        .build()
+//    val response = client.newCall(request).execute()
+//    val responseBody = response.body?.string() ?: ""
+//    val responseJson = json.decodeFromString<ResponseTg>(responseBody)
+//    return responseJson.result.firstOrNull()
+//}
+
 const val MAIN_MENU = "/start"
 const val BUTTON = "button"
 
-const val LIST_OF_PLACE = "list_of_place"
 const val LIST_OF_NAME_PLACE = "list_of_name_place"
+const val LIST_OF_PLACE = "list_of_place"
 
 const val POST_PLACE = "post_place"
