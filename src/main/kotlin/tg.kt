@@ -194,10 +194,10 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
     response.close()
 }
 
-fun waitForUserInput(json: Json, botToken: String, chatId: Long): String {
+fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId : Long): String {
     var messageText: String? = null
     while (messageText == null) {
-        val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset"
+        val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset=$updateId"
         val response = URL(getUpdates).readText()
         val responseJson = json.decodeFromString<ResponseTg>(response)
         responseJson.result.forEach { update ->
@@ -205,22 +205,11 @@ fun waitForUserInput(json: Json, botToken: String, chatId: Long): String {
                 messageText = update.message.text
             }
         }
-        Thread.sleep(2000)
+        if (messageText=="/start") break
+        Thread.sleep(1000)
     }
-    return messageText as String
+    return messageText.toString()
 }
-
-//fun getUpdatesUserAnswer(json: Json, botToken: String): Update? {
-//    val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset"
-//    val client = OkHttpClient()
-//    val request = Request.Builder()
-//        .url(getUpdates)
-//        .build()
-//    val response = client.newCall(request).execute()
-//    val responseBody = response.body?.string() ?: ""
-//    val responseJson = json.decodeFromString<ResponseTg>(responseBody)
-//    return responseJson.result.firstOrNull()
-//}
 
 const val MAIN_MENU = "/start"
 const val BUTTON = "button"

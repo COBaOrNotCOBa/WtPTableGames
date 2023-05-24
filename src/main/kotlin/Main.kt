@@ -25,8 +25,19 @@ fun main(args: Array<String>) {
         val responseTg: ResponseTg = json.decodeFromString(responseStringTg)
         if (responseTg.result.isEmpty()) continue
         val sortedUpdates = responseTg.result.sortedBy { it.updateId }
-        sortedUpdates.forEach { handleUpdate(it, json, botTokenTg, botTokenAt, airBaseID, tableID) }
         lastUpdateId = sortedUpdates.last().updateId + 1
+        sortedUpdates.forEach {
+            handleUpdate(
+                it,
+                json,
+                botTokenTg,
+                botTokenAt,
+                airBaseID,
+                tableID,
+                lastUpdateId,
+            )
+        }
+
     }
 }
 
@@ -37,6 +48,7 @@ fun handleUpdate(
     botTokenAt: String,
     airBaseID: String,
     tableID: String,
+    updateId: Long,
 ) {
     val message = updateTg.message?.text
     val chatId = updateTg.message?.chat?.id ?: updateTg.callbackQuery?.message?.chat?.id ?: return
@@ -64,33 +76,25 @@ fun handleUpdate(
     }
 
     if (data == POST_PLACE) {
-        // Запрашиваем у пользователя название места
+        var updateIdForUserInput = updateId
         sendMessage(json, botTokenTg, chatId, "Введите название места")
         // Ждем ответа пользователя иаем его значение в переменную name
-        val name = waitForUserInput(json, botTokenTg, chatId, )
-        // Запрашиваем у пользователя местоположение
+        val name = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
+        updateIdForUserInput++
         sendMessage(json, botTokenTg, chatId, "Введите местоположение")
         // Ждем ответа пользователя и передаем его значение в переменную location
-        val location = waitForUserInput(json, botTokenTg, chatId)
-        // Запрашиваем у пользователя комментарий
+        val location = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
+        updateIdForUserInput++
         sendMessage(json, botTokenTg, chatId, "Введите комментарий")
         // Ждем ответа пользователя и передаем его значение в переменную comments
-        val comments = waitForUserInput(json, botTokenTg, chatId)
-        // Отправляем данные в Airtable
+        val comments = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
         val fieldsPost = mapOf("Name" to name, "Location" to location, "Comments" to comments)
-        val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
-        sendMessage(json, botTokenTg, chatId, response)
+        if (!"$name$location$comments".contains("/start")) {
+            // Отправляем данные в Airtable
+            val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
+            sendMessage(json, botTokenTg, chatId, response)
+        } else sendMenu(json, botTokenTg, chatId)
     }
-
-//    if (data == POST_PLACE) {
-//        val fieldsPost = mapOf(
-//            "Name" to "Post 6",
-//            "Location" to "SPb",
-//            "Comments" to "This is a post record from IDEA"
-//        )
-//        sendMessage(json, botTokenTg, chatId, fieldsPost.toString())
-//        println(postAirtable(botTokenAt, airBaseID, tableID, fieldsPost))
-//    }
 
 //    val recordsIdList = responseAt.records.map { it.id }
 //    println("ID records: $recordsIdList")
