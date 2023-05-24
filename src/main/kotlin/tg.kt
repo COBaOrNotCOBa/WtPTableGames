@@ -1,17 +1,21 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.net.URL
 
 @Serializable
 data class ResponseTg(
     @SerialName("result")
     val result: List<Update>,
 )
+
 @Serializable
 data class Update(
     @SerialName("update_id")
@@ -58,6 +62,8 @@ data class SendMessageRequest(
 data class ReplyMarkup(
     @SerialName("inline_keyboard")
     val inlineKeyboard: List<List<InlineKeyboard>>,
+    @SerialName("forceReply")
+    val forceReply: ForceReply? = null,
 )
 
 @Serializable
@@ -66,6 +72,28 @@ data class InlineKeyboard(
     val callbackData: String,
     @SerialName("text")
     val text: String,
+)
+
+@Serializable
+data class ForceReply(
+    @SerialName("force_reply")
+    val inlineKeyboard: Boolean,
+//    @SerialName("input_field_placeholder")
+//    val inputFieldPlaceholder: String,
+)
+
+@Serializable
+data class BotCommand(
+    @SerialName("command")
+    val command: String,
+    @SerialName("description")
+    val description: String
+)
+
+@Serializable
+data class SetMyCommandsRequest(
+    @SerialName("commands")
+    val commands: List<BotCommand>
 )
 
 fun getUpdates(botToken: String, updateId: Long): String {
@@ -95,3 +123,98 @@ fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): St
     val response = client.newCall(request).execute()
     return response.body?.string() ?: ""
 }
+
+fun sendMessageButton(json: Json, botToken: String, chatId: Long, message: String, replyMarkup: ReplyMarkup): String {
+    val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
+    val requestBody = SendMessageRequest(
+        chatId = chatId,
+        text = message,
+        replyMarkup = replyMarkup,
+    )
+    val requestBodyString = json.encodeToString(requestBody)
+    val client = OkHttpClient()
+    val requestBodyJson = requestBodyString.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(sendMessage)
+        .header("Content-type", "application/json")
+        .post(requestBodyJson)
+        .build()
+    val response = client.newCall(request).execute()
+    return response.body?.string() ?: ""
+}
+
+fun sendMenu(json: Json, botToken: String, chatId: Long): String {
+    val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
+    val requestBody = SendMessageRequest(
+        chatId = chatId,
+        text = "Основное меню",
+        replyMarkup = ReplyMarkup(
+            listOf(
+                listOf(
+                    InlineKeyboard(callbackData = LIST_OF_PLACE, text = "Список мест для игр"),
+                ),
+                listOf(
+                    InlineKeyboard(callbackData = LIST_OF_NAME_PLACE, text = "Список названия мест для игр"),
+                ),
+                listOf(
+                    InlineKeyboard(callbackData = POST_PLACE, text = "Добавить место для игр"),
+                ),
+                listOf(
+                    InlineKeyboard(callbackData = BUTTON, text = "Что за кнопка"),
+                ),
+            )
+        )
+    )
+    val requestBodyString = json.encodeToString(requestBody)
+    val client = OkHttpClient()
+    val requestBodyJson = requestBodyString.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(sendMessage)
+        .header("Content-type", "application/json")
+        .post(requestBodyJson)
+        .build()
+    val response = client.newCall(request).execute()
+    return response.body?.string() ?: ""
+}
+
+fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
+    val setMyCommandsRequest = SetMyCommandsRequest(command)
+    val requestBody = json.encodeToString(setMyCommandsRequest)
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url("https://api.telegram.org/bot$botTokenTg/setMyCommands")
+        .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
+        .build()
+    val response = client.newCall(request).execute()
+    val responseBody = response.body?.string()
+    println(responseBody)
+    responseBody?.let {
+        ""
+    }
+    response.close()
+}
+
+fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId : Long): String {
+    var messageText: String? = null
+    while (messageText == null) {
+        val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset=$updateId"
+        val response = URL(getUpdates).readText()
+        val responseJson = json.decodeFromString<ResponseTg>(response)
+        responseJson.result.forEach { update ->
+            if (update.message?.chat?.id == chatId) {
+                messageText = update.message.text
+            }
+        }
+        if (messageText=="/start") break
+        Thread.sleep(1000)
+    }
+    return messageText.toString()
+}
+
+const val MAIN_MENU = "/start"
+const val BUTTON = "button"
+
+const val LIST_OF_NAME_PLACE = "list_of_name_place"
+const val LIST_OF_PLACE = "list_of_place"
+
+const val POST_PLACE = "post_place"

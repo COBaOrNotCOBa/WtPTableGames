@@ -1,5 +1,7 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,7 +22,21 @@ data class Records(
     val createdTime: String,
     @SerialName("fields")
     val fields: Map<String, String>,
-)
+) {
+    val namesOfPlace: List<String> by lazy {
+        fields["Name"]?.split(",") ?: emptyList()
+    }
+    val locationsOfPlace: List<String> by lazy {
+        fields["Location"]?.split(",") ?: emptyList()
+    }
+}
+
+fun getUpdateAt(json: Json, botTokenAt: String, airBaseID: String, tableID: String): ResponseAt {
+    val resultAt = runCatching { getAirtable(botTokenAt, airBaseID, tableID) }
+    val responseStringAt = resultAt.getOrNull() ?: "null"
+    return json.decodeFromString(responseStringAt)
+}
+
 fun getAirtable(
     botTokenAt: String, airBaseID: String, table: String,
 ): String {
