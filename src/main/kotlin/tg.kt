@@ -3,11 +3,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import java.net.URL
 
 @Serializable
@@ -78,8 +78,12 @@ data class InlineKeyboard(
 data class ForceReply(
     @SerialName("force_reply")
     val inlineKeyboard: Boolean,
-//    @SerialName("input_field_placeholder")
-//    val inputFieldPlaceholder: String,
+)
+
+@Serializable
+data class SetMyCommandsRequest(
+    @SerialName("commands")
+    val commands: List<BotCommand>
 )
 
 @Serializable
@@ -91,9 +95,11 @@ data class BotCommand(
 )
 
 @Serializable
-data class SetMyCommandsRequest(
-    @SerialName("commands")
-    val commands: List<BotCommand>
+data class SendDiceRoll(
+    @SerialName("chat_id")
+    val chatId: Long?,
+    @SerialName("emoji")
+    val emoji: String,
 )
 
 fun getUpdates(botToken: String, updateId: Long): String {
@@ -124,7 +130,9 @@ fun sendMessage(json: Json, botToken: String, chatId: Long, message: String): St
     return response.body?.string() ?: ""
 }
 
-fun sendMessageButton(json: Json, botToken: String, chatId: Long, message: String, replyMarkup: ReplyMarkup): String {
+fun sendMessageButton(
+    json: Json, botToken: String, chatId: Long, message: String, replyMarkup: ReplyMarkup
+): String {
     val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
     val requestBody = SendMessageRequest(
         chatId = chatId,
@@ -194,7 +202,7 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
     response.close()
 }
 
-fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId : Long): String {
+fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId: Long): String {
     var messageText: String? = null
     while (messageText == null) {
         val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset=$updateId"
@@ -205,10 +213,38 @@ fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId : Long
                 messageText = update.message.text
             }
         }
-        if (messageText=="/start") break
+        if (messageText == "/start") break
         Thread.sleep(1000)
     }
     return messageText.toString()
+}
+
+fun sendDice(json: Json, botToken: String, chatId: Long): String {
+    val sendDice = "https://api.telegram.org/bot$botToken/sendDice"
+    val requestBody = SendDiceRoll(
+        chatId = chatId,
+        emoji = "\uD83C\uDFB2", // Значение emoji для стандартной кости
+    )
+    println(requestBody)
+    val requestBodyString = json.encodeToString(requestBody)
+    val client = OkHttpClient()
+    val requestBodyJson = requestBodyString.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(sendDice)
+        .header("Content-type", "application/json")
+        .post(requestBodyJson)
+        .build()
+    client.newCall(request).enqueue(object : Callback {
+        override fun onResponse(call: Call, response: Response) {
+            val responseData = response.body?.string()
+            println(responseData)
+        }
+
+        override fun onFailure(call: Call, e: IOException) {
+            e.printStackTrace()
+        }
+    })
+    return "Игральная кость отправлена."
 }
 
 const val MAIN_MENU = "/start"

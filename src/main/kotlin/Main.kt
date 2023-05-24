@@ -12,13 +12,13 @@ fun main(args: Array<String>) {
     botCommand(
         json, botTokenTg, listOf(
             BotCommand("hello", "hello"),
+            BotCommand("dice_roll", "Бросить кости"),
             BotCommand("start", "Глвное меню"),
         )
     )
 
     while (true) {
         Thread.sleep(2000)
-
         val resultTg = runCatching { getUpdates(botTokenTg, lastUpdateId) }
         val responseStringTg = resultTg.getOrNull() ?: continue
         println(responseStringTg)
@@ -37,7 +37,6 @@ fun main(args: Array<String>) {
                 lastUpdateId,
             )
         }
-
     }
 }
 
@@ -61,6 +60,10 @@ fun handleUpdate(
 
     if (message?.lowercase()?.contains("hello") == true) {
         sendMessage(json, botTokenTg, chatId, "Hello")
+    }
+
+    if (message == "/dice_roll") {
+        sendDice(json, botTokenTg, chatId)
     }
 
     if (data == LIST_OF_PLACE) {
