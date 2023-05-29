@@ -62,8 +62,6 @@ data class SendMessageRequest(
 data class ReplyMarkup(
     @SerialName("inline_keyboard")
     val inlineKeyboard: List<List<InlineKeyboard>>,
-    @SerialName("forceReply")
-    val forceReply: ForceReply? = null,
 )
 
 @Serializable
@@ -72,12 +70,6 @@ data class InlineKeyboard(
     val callbackData: String,
     @SerialName("text")
     val text: String,
-)
-
-@Serializable
-data class ForceReply(
-    @SerialName("force_reply")
-    val inlineKeyboard: Boolean,
 )
 
 @Serializable
@@ -200,23 +192,6 @@ fun botCommand(json: Json, botTokenTg: String, command: List<BotCommand>) {
         ""
     }
     response.close()
-}
-
-fun waitForUserInput(json: Json, botToken: String, chatId: Long, updateId: Long): String {
-    var messageText: String? = null
-    while (messageText == null) {
-        val getUpdates = "https://api.telegram.org/bot$botToken/getUpdates?offset=$updateId"
-        val response = URL(getUpdates).readText()
-        val responseJson = json.decodeFromString<ResponseTg>(response)
-        responseJson.result.forEach { update ->
-            if (update.message?.chat?.id == chatId) {
-                messageText = update.message.text
-            }
-        }
-        if (messageText == "/start") break
-        Thread.sleep(1000)
-    }
-    return messageText.toString()
 }
 
 fun sendDice(json: Json, botToken: String, chatId: Long): String {
