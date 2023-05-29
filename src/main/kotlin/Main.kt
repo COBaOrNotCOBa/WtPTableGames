@@ -1,6 +1,8 @@
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
+class UserInputData(var name: String = "", var location: String = "", var comments: String = "")
+
 fun main(args: Array<String>) {
     val botTokenAt = args[0]
     val botTokenTg = args[1]
@@ -8,6 +10,8 @@ fun main(args: Array<String>) {
     val tableID = "tblsgqhvtm2xFxBdN"
     var lastUpdateId = 0L
     val json = Json { ignoreUnknownKeys = true }
+
+    val waitingForInput = mutableMapOf<Long, UserInputData>()
 
     botCommand(
         json, botTokenTg, listOf(
@@ -34,7 +38,7 @@ fun main(args: Array<String>) {
                 botTokenAt,
                 airBaseID,
                 tableID,
-                lastUpdateId,
+                waitingForInput,
             )
         }
     }
@@ -47,56 +51,72 @@ fun handleUpdate(
     botTokenAt: String,
     airBaseID: String,
     tableID: String,
-    updateId: Long,
+    waitingForInput: MutableMap<Long, UserInputData>,
 ) {
-    val message = updateTg.message?.text
+    val message = updateTg.message?.text ?: ""
     val chatId = updateTg.message?.chat?.id ?: updateTg.callbackQuery?.message?.chat?.id ?: return
     val data = updateTg.callbackQuery?.data
 
-    if (message?.lowercase() == MAIN_MENU || data == MAIN_MENU) {
+    if (message.lowercase() == MAIN_MENU || data == MAIN_MENU) {
         sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
         sendMenu(json, botTokenTg, chatId)
+        waitingForInput.remove(chatId)
     }
 
-    if (message?.lowercase()?.contains("hello") == true) {
+    if (message.lowercase().contains("hello")) {
         sendMessage(json, botTokenTg, chatId, "Hello")
+        waitingForInput.remove(chatId)
     }
 
     if (message == "/dice_roll") {
         sendDice(json, botTokenTg, chatId)
+        waitingForInput.remove(chatId)
     }
 
     if (data == LIST_OF_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
         val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Name
         sendMessage(json, botTokenTg, chatId, "Значения: $location")
+        waitingForInput.remove(chatId)
     }
 
     if (data == LIST_OF_NAME_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
         val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
         sendMessage(json, botTokenTg, chatId, "Значения: $names")
+        waitingForInput.remove(chatId)
+    }
+
+    if (waitingForInput.containsKey(chatId)) {
+        val userInput = waitingForInput[chatId] ?: return
+        println(userInput)
+        when {
+            userInput.name.isEmpty() -> {
+                userInput.name = message
+                sendMessage(json, botTokenTg, chatId, "Введите местоположение")
+            }
+            userInput.location.isEmpty() -> {
+                sendMessage(json, botTokenTg, chatId, "Введите комментарий")
+                userInput.location = message
+            }
+            else -> {
+                userInput.comments = message
+                waitingForInput.remove(chatId)
+                val fieldsPost =
+                    mapOf("Name" to userInput.name,
+                        "Location" to userInput.location,
+                        "Comments" to userInput.comments)
+                // Отправляем данные в Airtable
+                val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
+                sendMessage(json, botTokenTg, chatId, response)
+            }
+        }
     }
 
     if (data == POST_PLACE) {
-        var updateIdForUserInput = updateId
+        waitingForInput[chatId] = UserInputData()
         sendMessage(json, botTokenTg, chatId, "Введите название места")
-        // Ждем ответа пользователя иаем его значение в переменную name
-        val name = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
-        updateIdForUserInput++
-        sendMessage(json, botTokenTg, chatId, "Введите местоположение")
-        // Ждем ответа пользователя и передаем его значение в переменную location
-        val location = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
-        updateIdForUserInput++
-        sendMessage(json, botTokenTg, chatId, "Введите комментарий")
-        // Ждем ответа пользователя и передаем его значение в переменную comments
-        val comments = waitForUserInput(json, botTokenTg, chatId, updateIdForUserInput)
-        val fieldsPost = mapOf("Name" to name, "Location" to location, "Comments" to comments)
-        if (!"$name$location$comments".contains("/start")) {
-            // Отправляем данные в Airtable
-            val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
-            sendMessage(json, botTokenTg, chatId, response)
-        } else sendMenu(json, botTokenTg, chatId)
+        println(waitingForInput.values)
     }
 
 //    val recordsIdList = responseAt.records.map { it.id }
