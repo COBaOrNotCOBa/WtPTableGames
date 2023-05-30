@@ -220,6 +220,10 @@ fun sendDice(json: Json, botToken: String, chatId: Long): String {
     return "Игральная кость отправлена."
 }
 
+fun sendLocation(json: Json,botToken: String,chatId: Long): String{
+    return ""
+}
+
 const val MAIN_MENU = "/start"
 const val BUTTON = "button"
 
