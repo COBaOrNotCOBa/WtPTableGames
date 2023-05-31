@@ -68,6 +68,12 @@ fun handleUpdate(
         waitingForInput.remove(chatId)
     }
 
+    if (message.lowercase().contains("loc")) {
+        val location = Location(59.94426f, 30.307196f)
+        sendLocation(json, botTokenTg, chatId, location)
+        waitingForInput.remove(chatId)
+    }
+
     if (message == "/dice_roll") {
         sendDice(json, botTokenTg, chatId)
         waitingForInput.remove(chatId)
@@ -89,23 +95,30 @@ fun handleUpdate(
 
     if (waitingForInput.containsKey(chatId)) {
         val userInput = waitingForInput[chatId] ?: return
-        println(userInput)
         when {
             userInput.name.isEmpty() -> {
                 userInput.name = message
-                sendMessage(json, botTokenTg, chatId, "Введите местоположение")
+//                sendMessage(json, botTokenTg, chatId, "Введите адрес или координаты через запятую (долгота, широта)")
+                sendMessage(json, botTokenTg, chatId, "Введите адрес места (например: СПб, ул. Мира, д.1")
             }
+
             userInput.location.isEmpty() -> {
+                val (longitudeInput, latitudeInput) = message.split(",").map { it.trim().toFloatOrNull() ?: message }
+                if (longitudeInput != null && latitudeInput != null) {
+                    userInput.location = "$longitudeInput,$latitudeInput"
+                } else userInput.location = message
                 sendMessage(json, botTokenTg, chatId, "Введите комментарий")
-                userInput.location = message
             }
+
             else -> {
                 userInput.comments = message
                 waitingForInput.remove(chatId)
                 val fieldsPost =
-                    mapOf("Name" to userInput.name,
+                    mapOf(
+                        "Name" to userInput.name,
                         "Location" to userInput.location,
-                        "Comments" to userInput.comments)
+                        "Comments" to userInput.comments
+                    )
                 // Отправляем данные в Airtable
                 val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
                 sendMessage(json, botTokenTg, chatId, response)
