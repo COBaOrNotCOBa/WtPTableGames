@@ -58,7 +58,7 @@ fun handleUpdate(
     val data = updateTg.callbackQuery?.data
 
     if (message.lowercase() == MAIN_MENU || data == MAIN_MENU) {
-        sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
+//        sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
         sendMenu(json, botTokenTg, chatId)
         waitingForInput.remove(chatId)
     }
@@ -93,20 +93,32 @@ fun handleUpdate(
         waitingForInput.remove(chatId)
     }
 
-    if (waitingForInput.containsKey(chatId)) {
+    if (data == POST_PLACE) {
+        waitingForInput[chatId] = UserInputData()
+        sendMessage(json, botTokenTg, chatId, "Введите название места")
+        println(waitingForInput.values)
+    }
+
+    if (waitingForInput.containsKey(chatId) && data != POST_PLACE) {
         val userInput = waitingForInput[chatId] ?: return
         when {
             userInput.name.isEmpty() -> {
                 userInput.name = message
-//                sendMessage(json, botTokenTg, chatId, "Введите адрес или координаты через запятую (долгота, широта)")
-                sendMessage(json, botTokenTg, chatId, "Введите адрес места (например: СПб, ул. Мира, д.1")
+                sendMessage(
+                    json, botTokenTg, chatId,
+                    "Введите координаты через запятую (долгота, широта)\n" +
+                            "или адрес места (например: СПб, ул. Мира, д.1)"
+                )
+//                sendMessage(json, botTokenTg, chatId, "Введите адрес места (например: СПб, ул. Мира, д.1")
             }
 
             userInput.location.isEmpty() -> {
-                val (longitudeInput, latitudeInput) = message.split(",").map { it.trim().toFloatOrNull() ?: message }
-                if (longitudeInput != null && latitudeInput != null) {
-                    userInput.location = "$longitudeInput,$latitudeInput"
-                } else userInput.location = message
+                val locationData = message.split(",").map { it.trim().toFloatOrNull() }
+                if (locationData.size == 2 && locationData[0] != null && locationData[1] != null) {
+                    userInput.location = "${locationData[0]},${locationData[1]}"
+                } else {
+                    userInput.location = message
+                }
                 sendMessage(json, botTokenTg, chatId, "Введите комментарий")
             }
 
@@ -124,12 +136,6 @@ fun handleUpdate(
                 sendMessage(json, botTokenTg, chatId, response)
             }
         }
-    }
-
-    if (data == POST_PLACE) {
-        waitingForInput[chatId] = UserInputData()
-        sendMessage(json, botTokenTg, chatId, "Введите название места")
-        println(waitingForInput.values)
     }
 
 //    val recordsIdList = responseAt.records.map { it.id }

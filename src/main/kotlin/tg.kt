@@ -165,7 +165,7 @@ fun sendMenu(json: Json, botToken: String, chatId: Long): String {
     val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
     val requestBody = SendMessageRequest(
         chatId = chatId,
-        text = "Основное меню",
+        text = "Главное меню",
         replyMarkup = ReplyMarkup(
             listOf(
                 listOf(
