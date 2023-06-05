@@ -1,17 +1,19 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 @Serializable
 data class ResponseAt(
     @SerialName("records")
-    val records: List<Records>,
+    val records: List<Records>
 )
 
 @Serializable
@@ -21,33 +23,25 @@ data class Records(
     @SerialName("createdTime")
     val createdTime: String,
     @SerialName("fields")
-    val fields: Map<String, String>,
-) {
-    val namesOfPlace: List<String> by lazy {
-        fields["Name"]?.split(",") ?: emptyList()
-    }
-    val locationsOfPlace: List<String> by lazy {
-        fields["Location"]?.split(",") ?: emptyList()
-    }
-}
+    val fields: Fields
+)
 
 @Serializable
 data class Fields(
-    @SerialName("name")
+    @SerialName("Name")
     val name: String,
-    @SerialName("location")
+    @SerialName("Location")
     val location: String,
-    @SerialName("comments")
-    val comments: String,
+    @SerialName("Comments")
+    val comments: String
 )
 
-class Airtable(private val botTokenAt: String, private val airBaseId: String) {
+class Airtable(private val botTokenAt: String, private val airBaseId: String, private val json: Json) {
 
-    fun getUpdateAt(json: Json, tableId: String): ResponseAt {
-        val resultAt = runCatching { getAirtable(tableId) }
-        val responseStringAt = resultAt.getOrNull() ?: "null"
-        println(responseStringAt)
-        return json.decodeFromString(responseStringAt)
+    fun getUpdateAt(tableId: String): ResponseAt {
+        val resultAt = runCatching { getAirtable(tableId) }.getOrNull() ?: ""
+        println(resultAt)
+        return json.decodeFromString(resultAt)
     }
 
     private fun getAirtable(tableId: String): String {
@@ -66,11 +60,10 @@ class Airtable(private val botTokenAt: String, private val airBaseId: String) {
         }
     }
 
-
-    fun getAirtableListRecords(tableId: String): String {
+    fun getOnePlaceWithId(tableId: String, recordId: String): String {
         val client = OkHttpClient()
         val request = Request.Builder()
-            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/listRecords")
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/$recordId")
             .get()
             .addHeader("Authorization", "Bearer $botTokenAt")
             .build()
@@ -78,10 +71,26 @@ class Airtable(private val botTokenAt: String, private val airBaseId: String) {
             val response = client.newCall(request).execute()
             response.body?.string() ?: ""
         } catch (e: IOException) {
-            println("Error getting records from Airtable: ${e.message}")
+            println("Error deleting record from Airtable: ${e.message}")
             ""
         }
     }
+
+//    fun postAirtable(tableId: String, requestBody: RequestBody): String {
+//        val client = OkHttpClient()
+//        val request = Request.Builder()
+//            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/listRecords")
+//            .post(requestBody)
+//            .addHeader("Authorization", "Bearer $botTokenAt")
+//            .build()
+//        return try {
+//            val response = client.newCall(request).execute()
+//            response.body?.string() ?: ""
+//        } catch (e: IOException) {
+//            println("Error getting records from Airtable: ${e.message}")
+//            ""
+//        }
+//    }
 
     fun postAirtable(tableId: String, fields: Map<String, String>): String {
         val client = OkHttpClient()
