@@ -31,117 +31,138 @@ data class Records(
     }
 }
 
-fun getUpdateAt(json: Json, botTokenAt: String, airBaseID: String, tableID: String): ResponseAt {
-    val resultAt = runCatching { getAirtable(botTokenAt, airBaseID, tableID) }
-    val responseStringAt = resultAt.getOrNull() ?: "null"
-    return json.decodeFromString(responseStringAt)
-}
+@Serializable
+data class Fields(
+    @SerialName("name")
+    val name: String,
+    @SerialName("location")
+    val location: String,
+    @SerialName("comments")
+    val comments: String,
+)
 
-fun getAirtable(
-    botTokenAt: String, airBaseID: String, table: String,
-): String {
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$table")
-        .get()
-        .addHeader("Authorization", "Bearer $botTokenAt")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error getting records from Airtable: ${e.message}")
-        ""
-    }
-}
+class Airtable(private val botTokenAt: String, private val airBaseId: String) {
 
-fun postAirtable(
-    botTokenAt: String, airBaseID: String, tableId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val fieldsJson = fields.entries.joinToString(separator = ",") {
-        "\"${it.key}\":\"${it.value}\""
+    fun getUpdateAt(json: Json, tableId: String): ResponseAt {
+        val resultAt = runCatching { getAirtable(tableId) }
+        val responseStringAt = resultAt.getOrNull() ?: "null"
+        println(responseStringAt)
+        return json.decodeFromString(responseStringAt)
     }
-    val postData = "{\"fields\": {$fieldsJson}}"
-    val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId")
-        .post(requestBody)
-        .addHeader("Authorization", "Bearer $botTokenAt")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error creating new record in Airtable: ${e.message}")
-        ""
-    }
-}
 
-fun putAirtable(
-    botTokenAt: String, airBaseID: String, tableId: String, recordId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val fieldsJson = fields.entries.joinToString(separator = ",") {
-        "\"${it.key}\":\"${it.value}\""
+    private fun getAirtable(tableId: String): String {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId")
+            .get()
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error getting records from Airtable: ${e.message}")
+            ""
+        }
     }
-    val postData = "{\"fields\": {$fieldsJson}}"
-    val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId")
-        .put(requestBody)
-        .addHeader("Authorization", "Bearer $botTokenAt")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error updating record in Airtable: ${e.message}")
-        ""
-    }
-}
 
-fun patchAirtable(
-    botTokenAt: String, airBaseID: String, tableId: String, recordId: String, fields: Map<String, String>,
-): String {
-    val client = OkHttpClient()
-    val url = "https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId"
-    val json = "application/json; charset=utf-8".toMediaTypeOrNull()
-    val requestBody = "{\"fields\":${fields.toAirtableFieldsJson()}}".toRequestBody(json)
-    val request = Request.Builder()
-        .url(url)
-        .patch(requestBody)
-        .addHeader("Authorization", "Bearer $botTokenAt")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error updating record in Airtable: ${e.message}")
-        ""
-    }
-}
 
-fun deleteAirtable(
-    botTokenAt: String, airBaseID: String, tableId: String, recordId: String,
-): String {
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("https://api.airtable.com/v0/app$airBaseID/$tableId/$recordId")
-        .delete()
-        .addHeader("Authorization", "Bearer $botTokenAt")
-        .build()
-    return try {
-        val response = client.newCall(request).execute()
-        response.body?.string() ?: ""
-    } catch (e: IOException) {
-        println("Error deleting record from Airtable: ${e.message}")
-        ""
+    fun getAirtableListRecords(tableId: String): String {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/listRecords")
+            .get()
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error getting records from Airtable: ${e.message}")
+            ""
+        }
     }
-}
 
-fun Map<String, String>.toAirtableFieldsJson(): String {
-    return entries.joinToString(separator = ",") { (key, value) ->
-        "\"$key\":\"$value\""
-    }.let { "{$it}" }
+    fun postAirtable(tableId: String, fields: Map<String, String>): String {
+        val client = OkHttpClient()
+        val fieldsJson = fields.entries.joinToString(separator = ",") {
+            "\"${it.key}\":\"${it.value}\""
+        }
+        val postData = "{\"fields\": {$fieldsJson}}"
+        val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
+        val request = Request.Builder()
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId")
+            .post(requestBody)
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error creating new record in Airtable: ${e.message}")
+            ""
+        }
+    }
+
+    fun putAirtable(tableId: String, recordId: String, fields: Map<String, String>): String {
+        val client = OkHttpClient()
+        val fieldsJson = fields.entries.joinToString(separator = ",") {
+            "\"${it.key}\":\"${it.value}\""
+        }
+        val postData = "{\"fields\": {$fieldsJson}}"
+        val requestBody = postData.toRequestBody("application/json".toMediaTypeOrNull())
+        val request = Request.Builder()
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/$recordId")
+            .put(requestBody)
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error updating record in Airtable: ${e.message}")
+            ""
+        }
+    }
+
+    fun patchAirtable(tableId: String, recordId: String, fields: Map<String, String>): String {
+        val client = OkHttpClient()
+        val url = "https://api.airtable.com/v0/app$airBaseId/$tableId/$recordId"
+        val json = "application/json; charset=utf-8".toMediaTypeOrNull()
+        val requestBody = "{\"fields\":${fields.toAirtableFieldsJson()}}".toRequestBody(json)
+        val request = Request.Builder()
+            .url(url)
+            .patch(requestBody)
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error updating record in Airtable: ${e.message}")
+            ""
+        }
+    }
+
+    fun deleteAirtable(tableId: String, recordId: String): String {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://api.airtable.com/v0/app$airBaseId/$tableId/$recordId")
+            .delete()
+            .addHeader("Authorization", "Bearer $botTokenAt")
+            .build()
+        return try {
+            val response = client.newCall(request).execute()
+            response.body?.string() ?: ""
+        } catch (e: IOException) {
+            println("Error deleting record from Airtable: ${e.message}")
+            ""
+        }
+    }
+
+    private fun Map<String, String>.toAirtableFieldsJson(): String {
+        return entries.joinToString(separator = ",") { (key, value) ->
+            "\"$key\":\"$value\""
+        }.let { "{$it}" }
+    }
 }

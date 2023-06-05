@@ -4,10 +4,10 @@ import kotlinx.serialization.json.Json
 class UserInputData(var name: String = "", var location: String = "", var comments: String = "")
 
 fun main(args: Array<String>) {
-    val botTokenAt = args[0]
+    val airtable = Airtable(args[0], args[2])
+    val tableId = "tblsgqhvtm2xFxBdN"
+
     val botTokenTg = args[1]
-    val airBaseID = args[2]
-    val tableID = "tblsgqhvtm2xFxBdN"
     var lastUpdateId = 0L
     val json = Json { ignoreUnknownKeys = true }
 
@@ -35,9 +35,8 @@ fun main(args: Array<String>) {
                 it,
                 json,
                 botTokenTg,
-                botTokenAt,
-                airBaseID,
-                tableID,
+                airtable,
+                tableId,
                 waitingForInput,
             )
         }
@@ -48,8 +47,7 @@ fun handleUpdate(
     updateTg: Update,
     json: Json,
     botTokenTg: String,
-    botTokenAt: String,
-    airBaseID: String,
+    airtable: Airtable,
     tableID: String,
     waitingForInput: MutableMap<Long, UserInputData>,
 ) {
@@ -58,8 +56,12 @@ fun handleUpdate(
     val data = updateTg.callbackQuery?.data
 
     if (message.lowercase() == MAIN_MENU || data == MAIN_MENU) {
-//        sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
         sendMenu(json, botTokenTg, chatId)
+        waitingForInput.remove(chatId)
+    }
+
+    if (message.lowercase().contains("test")) {
+        println(airtable.getUpdateAt(json,tableID))
         waitingForInput.remove(chatId)
     }
 
@@ -80,14 +82,14 @@ fun handleUpdate(
     }
 
     if (data == LIST_OF_PLACE) {
-        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
+        val responseAt = airtable.getUpdateAt(json, tableID)
         val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Location
         sendMessage(json, botTokenTg, chatId, "Значения: $location")
         waitingForInput.remove(chatId)
     }
 
     if (data == LIST_OF_NAME_PLACE) {
-        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
+        val responseAt = airtable.getUpdateAt(json, tableID)
         val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
         sendMessage(json, botTokenTg, chatId, "Значения: $names")
         waitingForInput.remove(chatId)
@@ -131,7 +133,7 @@ fun handleUpdate(
                         "Comments" to userInput.comments
                     )
                 // Отправляем данные в Airtable
-                val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
+                val response = airtable.postAirtable(tableID, fieldsPost)
                 sendMessage(json, botTokenTg, chatId, response)
             }
         }
