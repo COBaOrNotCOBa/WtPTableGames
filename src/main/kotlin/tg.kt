@@ -54,6 +54,8 @@ data class SendMessageRequest(
     val text: String,
     @SerialName("reply_markup")
     val replyMarkup: ReplyMarkup? = null,
+    @SerialName("location")
+    val location: Location? = null,
 )
 
 @Serializable
@@ -90,6 +92,24 @@ data class SendDiceRoll(
     val chatId: Long?,
     @SerialName("emoji")
     val emoji: String,
+)
+
+@Serializable
+data class Location(
+    @SerialName("latitude")
+    val latitude: Float,
+    @SerialName("longitude")
+    val longitude: Float,
+)
+
+@Serializable
+data class SendLocation(
+    @SerialName("chat_id")
+    val chatId: Long?,
+    @SerialName("latitude")
+    val latitude: Float,
+    @SerialName("longitude")
+    val longitude: Float,
 )
 
 fun getUpdates(botToken: String, updateId: Long): String {
@@ -145,7 +165,7 @@ fun sendMenu(json: Json, botToken: String, chatId: Long): String {
     val sendMessage = "https://api.telegram.org/bot$botToken/sendMessage"
     val requestBody = SendMessageRequest(
         chatId = chatId,
-        text = "Основное меню",
+        text = "Главное меню",
         replyMarkup = ReplyMarkup(
             listOf(
                 listOf(
@@ -218,6 +238,26 @@ fun sendDice(json: Json, botToken: String, chatId: Long): String {
         }
     })
     return "Игральная кость отправлена."
+}
+
+fun sendLocation(json: Json, botToken: String, chatId: Long, location: Location): String {
+    val sendMessage = "https://api.telegram.org/bot$botToken/sendLocation"
+    val requestBody = SendLocation(
+        chatId = chatId,
+        latitude = location.latitude,
+        longitude = location.longitude,
+    )
+    println(requestBody)
+    val requestBodyString = json.encodeToString(requestBody)
+    val client = OkHttpClient()
+    val requestBodyJson = requestBodyString.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(sendMessage)
+        .header("Content-type", "application/json")
+        .post(requestBodyJson)
+        .build()
+    val response = client.newCall(request).execute()
+    return response.body?.string() ?: ""
 }
 
 const val MAIN_MENU = "/start"
