@@ -81,7 +81,7 @@ fun handleUpdate(
 
     if (data == LIST_OF_PLACE) {
         val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
-        val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Name
+        val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Location
         sendMessage(json, botTokenTg, chatId, "Значения: $location")
         waitingForInput.remove(chatId)
     }
