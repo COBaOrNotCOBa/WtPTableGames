@@ -1,20 +1,24 @@
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class UserInputData(var name: String = "", var location: String = "", var comments: String = "")
 
 fun main(args: Array<String>) {
-    val botTokenAt = args[0]
-    val botTokenTg = args[1]
-    val airBaseID = args[2]
-    val tableID = "tblsgqhvtm2xFxBdN"
-    var lastUpdateId = 0L
     val json = Json { ignoreUnknownKeys = true }
+    val airtable = Airtable(args[0], args[2], json)
+    val tableId = "tblsgqhvtm2xFxBdN"
+
+    val botTokenTg = args[1]
+    var lastUpdateId = 0L
 
     val waitingForInput = mutableMapOf<Long, UserInputData>()
 
     botCommand(
         json, botTokenTg, listOf(
+            BotCommand("test", "test"),
             BotCommand("hello", "hello"),
             BotCommand("dice_roll", "Бросить кости"),
             BotCommand("start", "Глвное меню"),
@@ -35,9 +39,8 @@ fun main(args: Array<String>) {
                 it,
                 json,
                 botTokenTg,
-                botTokenAt,
-                airBaseID,
-                tableID,
+                airtable,
+                tableId,
                 waitingForInput,
             )
         }
@@ -48,18 +51,20 @@ fun handleUpdate(
     updateTg: Update,
     json: Json,
     botTokenTg: String,
-    botTokenAt: String,
-    airBaseID: String,
-    tableID: String,
+    airtable: Airtable,
+    tableId: String,
     waitingForInput: MutableMap<Long, UserInputData>,
 ) {
     val message = updateTg.message?.text ?: ""
     val chatId = updateTg.message?.chat?.id ?: updateTg.callbackQuery?.message?.chat?.id ?: return
-    val data = updateTg.callbackQuery?.data
+    val data = updateTg.callbackQuery?.data ?: ""
 
     if (message.lowercase() == MAIN_MENU || data == MAIN_MENU) {
-//        sendMessage(json, botTokenTg, chatId, "Приветствую тебя на просторах нашего юного бота!")
         sendMenu(json, botTokenTg, chatId)
+        waitingForInput.remove(chatId)
+    }
+
+    if (message.lowercase().contains("test")) {
         waitingForInput.remove(chatId)
     }
 
@@ -79,19 +84,50 @@ fun handleUpdate(
         waitingForInput.remove(chatId)
     }
 
-    if (data == LIST_OF_PLACE) {
-        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
-        val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Location
-        sendMessage(json, botTokenTg, chatId, "Значения: $location")
-        waitingForInput.remove(chatId)
-    }
-
     if (data == LIST_OF_NAME_PLACE) {
-        val responseAt = getUpdateAt(json, botTokenAt, airBaseID, tableID)
-        val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
+        val responseAt = airtable.getUpdateAt(tableId)
+        val names = responseAt.records.map { it.fields.name }
         sendMessage(json, botTokenTg, chatId, "Значения: $names")
         waitingForInput.remove(chatId)
     }
+
+    if (data == LIST_OF_PLACE) {
+        val responseAt = airtable.getUpdateAt(tableId)
+        val buttons = responseAt.records.sortedBy { it.fields.location }.map { record ->
+            InlineKeyboard(callbackData = "place:${record.id}", record.fields.location)
+        }.chunked(2) // разбиваем кнопки на группы по 2
+        val replyMarkup = ReplyMarkup(buttons)
+        sendMessageButton(json, botTokenTg, chatId, "Список мест:", replyMarkup)
+        waitingForInput.remove(chatId)
+    }
+
+    // Обработка запросов на нажатие кнопок
+    if (data.startsWith("place:")) {
+        val placeId = data.removePrefix("place:")
+        val placeRecordJson = airtable.getOnePlaceWithId(tableId, placeId)
+        val placeRecord =
+            json.decodeFromString<Records>(placeRecordJson) // парсим json и берем первую запись
+        val placeName = placeRecord.fields.name
+        val placeLocation = placeRecord.fields.location
+        val placeComments = placeRecord.fields.comments
+//         Отправляем подробную информацию о месте
+        sendMessage(
+            json, botTokenTg, chatId, """
+        Информация о месте:
+        Название: $placeName
+        Местоположение: $placeLocation
+        Комментарии: $placeComments
+    """.trimIndent()
+        )
+        waitingForInput.remove(chatId)
+    }
+
+//    if (data == LIST_OF_NAME_PLACE) {
+//        val responseAt = airtable.getUpdateAt(json, tableID)
+//        val names: List<String> = responseAt.records.flatMap { it.namesOfPlace } // список всех значений Name
+//        sendMessage(json, botTokenTg, chatId, "Значения: $names")
+//        waitingForInput.remove(chatId)
+//    }
 
     if (data == POST_PLACE) {
         waitingForInput[chatId] = UserInputData()
@@ -131,7 +167,7 @@ fun handleUpdate(
                         "Comments" to userInput.comments
                     )
                 // Отправляем данные в Airtable
-                val response = postAirtable(botTokenAt, airBaseID, tableID, fieldsPost)
+                val response = airtable.postAirtable(tableId, fieldsPost)
                 sendMessage(json, botTokenTg, chatId, response)
             }
         }
