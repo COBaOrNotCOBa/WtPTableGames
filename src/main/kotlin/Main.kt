@@ -151,8 +151,14 @@ fun handleUpdate(
                                 "Comments" to userInput.comments
                             )
                         // Отправляем данные в Airtable
-                        val response = airtable.postAirtable(tableId, fieldsPost)
-                        sendMessage(json, botTokenTg, chatId, response)
+                        airtable.postAirtable(tableId, fieldsPost)
+                        sendMessage(
+                            json, botTokenTg, chatId,
+                            "Вы добавили новое место для игр!\n" +
+                                    "Название: ${userInput.name}\n" +
+                                    "Адрес (или геолокация): ${userInput.location}\n" +
+                                    "Ваш комментарий: ${userInput.comments}"
+                        )
                     }
                 }
             } else waitingForInput.remove(chatId)
