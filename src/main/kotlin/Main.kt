@@ -18,6 +18,7 @@ fun main(args: Array<String>) {
 
     botCommand(
         json, botTokenTg, listOf(
+            BotCommand("test", "test"),
             BotCommand("hello", "hello"),
             BotCommand("dice_roll", "Бросить кости"),
             BotCommand("start", "Глвное меню"),
@@ -64,34 +65,6 @@ fun handleUpdate(
     }
 
     if (message.lowercase().contains("test")) {
-        val responseAt = airtable.getUpdateAt(tableId)
-//        val placesString = responseAt.records.map { it.fields.location }
-        val buttons = responseAt.records.sortedBy { it.fields.location }.map { record ->
-            InlineKeyboard(callbackData = "place:${record.id}", record.fields.location)
-        }.chunked(2) // разбиваем кнопки на группы по 2
-        val replyMarkup = ReplyMarkup(buttons)
-        sendMessageButton(json, botTokenTg, chatId, "Список мест:", replyMarkup)
-
-// Обработка запросов на нажатие кнопок
-        if (data.startsWith("place:")) {
-            val placeId = data.removePrefix("place:")
-            val placeRecord = airtable.getOnePlaceWithId(tableId, placeId)
-            println(placeRecord)
-//            if (placeRecord != null) {
-//                val placeName = placeRecord.fields["Name"]
-//                val placeLocation = placeRecord.fields["Location"]
-//                val placeComments = placeRecord.fields["Comments"]
-//                // Отправляем подробную информацию о месте
-//                sendMessage(
-//                    json, botTokenTg, chatId, """
-//            Информация о месте:
-//            Название: $placeName
-//            Местоположение: $placeLocation
-//            Комментарии: $placeComments
-//        """.trimIndent()
-//                )
-//            }
-        }
         waitingForInput.remove(chatId)
     }
 
@@ -114,17 +87,40 @@ fun handleUpdate(
     if (data == LIST_OF_NAME_PLACE) {
         val responseAt = airtable.getUpdateAt(tableId)
         val names = responseAt.records.map { it.fields.name }
-        println(names)
         sendMessage(json, botTokenTg, chatId, "Значения: $names")
         waitingForInput.remove(chatId)
     }
 
-//    if (data == LIST_OF_PLACE) {
-//        val responseAt = airtable.getUpdateAt(json, tableID)
-//        val location: List<String> = responseAt.records.flatMap { it.locationsOfPlace } // список всех значений Location
-//        sendMessage(json, botTokenTg, chatId, "Значения: $location")
-//        waitingForInput.remove(chatId)
-//    }
+    if (data == LIST_OF_PLACE) {
+        val responseAt = airtable.getUpdateAt(tableId)
+        val buttons = responseAt.records.sortedBy { it.fields.location }.map { record ->
+            InlineKeyboard(callbackData = "place:${record.id}", record.fields.location)
+        }.chunked(2) // разбиваем кнопки на группы по 2
+        val replyMarkup = ReplyMarkup(buttons)
+        sendMessageButton(json, botTokenTg, chatId, "Список мест:", replyMarkup)
+        waitingForInput.remove(chatId)
+    }
+
+    // Обработка запросов на нажатие кнопок
+    if (data.startsWith("place:")) {
+        val placeId = data.removePrefix("place:")
+        val placeRecordJson = airtable.getOnePlaceWithId(tableId, placeId)
+        val placeRecord =
+            json.decodeFromString<Records>(placeRecordJson) // парсим json и берем первую запись
+        val placeName = placeRecord.fields.name
+        val placeLocation = placeRecord.fields.location
+        val placeComments = placeRecord.fields.comments
+//         Отправляем подробную информацию о месте
+        sendMessage(
+            json, botTokenTg, chatId, """
+        Информация о месте:
+        Название: $placeName
+        Местоположение: $placeLocation
+        Комментарии: $placeComments
+    """.trimIndent()
+        )
+        waitingForInput.remove(chatId)
+    }
 
 //    if (data == LIST_OF_NAME_PLACE) {
 //        val responseAt = airtable.getUpdateAt(json, tableID)
