@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
         Thread.sleep(2000)
         val resultTg = runCatching { getUpdates(botTokenTg, lastUpdateId) }
         val responseStringTg = resultTg.getOrNull() ?: continue
-        println(responseStringTg)
+        if (responseStringTg!="{\"ok\":true,\"result\":[]}") println(responseStringTg)
         val responseTg: ResponseTg = json.decodeFromString(responseStringTg)
         if (responseTg.result.isEmpty()) continue
         val sortedUpdates = responseTg.result.sortedBy { it.updateId }
