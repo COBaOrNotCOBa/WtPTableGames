@@ -34,29 +34,37 @@
 
 ### Клонирование репозитория
 
-bash
-git clone https://github.com/COBaOrNotCOBa/WtPTableGames.git
-cd WtPTableGames
+    git clone https://github.com/COBaOrNotCOBa/WtPTableGames.git
+    cd WtPTableGames
 
-Запуск через Gradle Wrapper
+### Запуск через Gradle Wrapper
 
 Linux / macOS:
-./gradlew run
+
+    ./gradlew run
 
 Windows:
-gradlew.bat run
 
-Приложение запустится с точкой входа MainKt, указанной в блоке application Gradle-скрипта.
-(Опционально) Сборка fat-jar
+    gradlew.bat run
 
-Если настроен таск shadowJar, можно собрать единый jar:
+Приложение запустится с точкой входа `MainKt`, указанной в блоке `application` Gradle-скрипта.
+
+### (Опционально) Сборка fat-jar
+
+Если настроен таск `shadowJar`, можно собрать единый jar.
+
 Linux / macOS:
-./gradlew shadowJar
+
+    ./gradlew shadowJar
 
 Windows:
-gradlew.bat shadowJar
 
-Готовый jar-файл будет лежать в build/libs/.
+    gradlew.bat shadowJar
 
-### Статус проекта
+Готовый jar-файл будет лежать в каталоге:
+
+    build/libs/
+
+## Статус проекта
+
 Незавершённый эксперимент с Телеграм-ботом и настольными играми. Репозиторий больше про «песочницу» и пробу стека, чем про готовое приложение.
